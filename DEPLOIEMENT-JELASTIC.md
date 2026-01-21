@@ -4,15 +4,31 @@ Guide complet de déploiement de Bus Display sur Jelastic (Infomaniak ou autre).
 
 ---
 
-## Architecture recommandée
+## Architecture (4 noeuds avec load balancing)
 
 ```
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│  Nginx 1.28+    │────▶│  Node.js 25+    │────▶│  Redis 7.2+     │
-│  (Load Balancer)│     │  (Application)  │     │  (Cache)        │
-│  Port 443 → 3000│     │  Port 3000      │     │  Port 6379      │
-└─────────────────┘     └─────────────────┘     └─────────────────┘
+                                    ┌─────────────────┐
+                                ┌──▶│  Node.js #1     │──┐
+                                │   │  Port 3000      │  │
+┌─────────────────┐             │   └─────────────────┘  │
+│  Nginx 1.28+    │             │   ┌─────────────────┐  │     ┌─────────────────┐
+│  (Load Balancer)│─────────────┼──▶│  Node.js #2     │──┼────▶│  Redis 7.2+     │
+│  Port 443       │             │   │  Port 3000      │  │     │  (Cache partagé)│
+│  Round Robin    │             │   └─────────────────┘  │     │  Port 6379      │
+└─────────────────┘             │   ┌─────────────────┐  │     └─────────────────┘
+                                ├──▶│  Node.js #3     │──┤
+                                │   │  Port 3000      │  │
+                                │   └─────────────────┘  │
+                                │   ┌─────────────────┐  │
+                                └──▶│  Node.js #4     │──┘
+                                    │  Port 3000      │
+                                    └─────────────────┘
 ```
+
+**Avantages de cette architecture :**
+- Répartition de charge entre 4 noeuds
+- Réduction de la consommation API (cache Redis partagé)
+- Haute disponibilité (si un noeud tombe, les autres prennent le relais)
 
 ---
 
@@ -24,11 +40,13 @@ Guide complet de déploiement de Bus Display sur Jelastic (Infomaniak ou autre).
 2. Cliquez sur **New Environment**
 3. Configurez la topologie :
 
-| Couche | Type | Version | Cloudlets |
-|--------|------|---------|-----------|
-| **Balancer** | Nginx | 1.28+ | 1-5 |
-| **Application** | Node.js | 25+ | 4-8 |
-| **NoSQL** | Redis | 7.2+ | 1-4 |
+| Couche | Type | Version | Cloudlets | **Nodes** |
+|--------|------|---------|-----------|-----------|
+| **Balancer** | Nginx | 1.28+ | 1-5 | 1 |
+| **Application** | Node.js | 25+ | 4-8 | **4** |
+| **NoSQL** | Redis | 7.2+ | 1-4 | 1 |
+
+> **Important** : Définissez **4 noeuds** pour Node.js (horizontal scaling)
 
 4. Activez **SSL** (Let's Encrypt)
 5. Nommez l'environnement (ex: `bus-display`)
@@ -37,9 +55,11 @@ Guide complet de déploiement de Bus Display sur Jelastic (Infomaniak ou autre).
 ### 1.2 Noter les informations importantes
 
 Après création, notez :
-- **IP interne Node.js** : `10.100.XX.XX` (visible dans le dashboard)
+- **IPs internes Node.js** : `10.100.XX.1`, `10.100.XX.2`, `10.100.XX.3`, `10.100.XX.4`
 - **IP interne Redis** : `10.100.YY.YY`
 - **Mot de passe Redis** : Cliquez sur le noeud Redis → **Info** → **Admin Password**
+
+> **Redis est OBLIGATOIRE** avec plusieurs noeuds pour partager le cache entre toutes les instances
 
 ---
 
@@ -65,9 +85,11 @@ Après création, notez :
 
 ## Étape 3 : Configuration de l'application
 
+> **IMPORTANT** : Les étapes 3.1 à 3.6 doivent être effectuées sur **CHAQUE noeud Node.js** (4 fois au total)
+
 ### 3.1 Accéder au serveur Node.js
 
-Cliquez sur **Web SSH** sur le noeud Node.js, ou utilisez SSH :
+Cliquez sur **Web SSH** sur le **premier noeud Node.js**, ou utilisez SSH :
 
 ```bash
 ssh [nodeid]-[env]@gate.[region].jelastic.com
@@ -93,12 +115,12 @@ NODE_ENV=production
 PORT=3000
 HOSTNAME=0.0.0.0
 
-# Redis - Remplacez avec vos valeurs
+# Redis - OBLIGATOIRE pour partager le cache entre les 4 noeuds
 REDIS_ENABLED=true
 REDIS_URL=redis://admin:VOTRE_MOT_DE_PASSE_REDIS@10.100.YY.YY:6379
 REDIS_PREFIX=bus-display:
 
-# Sécurité - Générez une nouvelle clé
+# Sécurité - Générez une nouvelle clé (même clé sur tous les noeuds)
 ADMIN_API_KEY=VOTRE_CLE_SECRETE
 ```
 
@@ -126,25 +148,37 @@ pm2 start ecosystem.config.js
 pm2 save
 ```
 
+### 3.7 Répéter sur les autres noeuds
+
+**Répétez les étapes 3.1 à 3.6 sur les 3 autres noeuds Node.js.**
+
+> **Astuce** : Utilisez le même `.env.local` sur tous les noeuds (copiez-le)
+
 ---
 
 ## Étape 4 : Configurer Nginx (IMPORTANT)
 
 Par défaut, Nginx route vers le port 80, mais notre app écoute sur le port 3000.
+Avec 4 noeuds, il faut configurer les 4 backends.
 
 ### 4.1 Accéder au serveur Nginx
 
 Cliquez sur **Web SSH** sur le noeud Nginx (Load Balancer).
 
-### 4.2 Modifier la configuration
+### 4.2 Modifier la configuration pour les 4 noeuds
 
 ```bash
-# Trouver l'IP du noeud Node.js
-IP_NODEJS="10.100.XX.XX"  # Remplacez par l'IP réelle
+# Liste des IPs des 4 noeuds Node.js (remplacez par les vraies IPs)
+IP_NODE1="10.100.XX.1"
+IP_NODE2="10.100.XX.2"
+IP_NODE3="10.100.XX.3"
+IP_NODE4="10.100.XX.4"
 
-# Modifier le fichier de configuration
-sudo sed -i "s/server ${IP_NODEJS};/server ${IP_NODEJS}:3000;/g" /etc/nginx/nginx-jelastic.conf
-sudo sed -i "s/${IP_NODEJS}\\\\:80/${IP_NODEJS}:3000/g" /etc/nginx/nginx-jelastic.conf
+# Modifier chaque backend pour utiliser le port 3000
+for IP in $IP_NODE1 $IP_NODE2 $IP_NODE3 $IP_NODE4; do
+    sudo sed -i "s/server ${IP};/server ${IP}:3000;/g" /etc/nginx/nginx-jelastic.conf
+    sudo sed -i "s/${IP}\\\\:80/${IP}:3000/g" /etc/nginx/nginx-jelastic.conf
+done
 
 # Tester la configuration
 sudo nginx -t
@@ -156,10 +190,18 @@ sudo nginx -s reload
 ### 4.3 Vérifier la configuration
 
 ```bash
-grep -A5 "upstream" /etc/nginx/nginx-jelastic.conf
+grep -A10 "upstream" /etc/nginx/nginx-jelastic.conf | grep "server"
 ```
 
-Vous devez voir `server 10.100.XX.XX:3000;`
+Vous devez voir les 4 serveurs avec le port 3000 :
+```
+server 10.100.XX.1:3000;
+server 10.100.XX.2:3000;
+server 10.100.XX.3:3000;
+server 10.100.XX.4:3000;
+```
+
+> **Note** : Nginx utilise le load balancing round-robin par défaut
 
 ---
 
@@ -278,13 +320,30 @@ Pour un domaine personnalisé (ex: `bus.monentreprise.ch`) :
 
 ---
 
-## Checklist de déploiement
+## Checklist de déploiement (4 noeuds)
 
-- [ ] Environnement Jelastic créé (Nginx + Node.js + Redis)
-- [ ] Code déployé via Git ou Archive
-- [ ] `.env.local` créé avec les bonnes valeurs
-- [ ] `npm ci && npm run build` exécuté
-- [ ] Nginx configuré pour router vers le port 3000
-- [ ] PM2 démarré et sauvegardé
-- [ ] Test `/api/ping` réussi
+- [ ] Environnement Jelastic créé (1 Nginx + **4 Node.js** + 1 Redis)
+- [ ] Code déployé via Git ou Archive sur les 4 noeuds
+- [ ] `.env.local` créé sur **chaque noeud** (même configuration)
+- [ ] `npm ci && npm run build` exécuté sur **chaque noeud**
+- [ ] PM2 démarré sur **chaque noeud** (`pm2 start && pm2 save`)
+- [ ] Nginx configuré pour router vers les **4 backends** sur le port 3000
+- [ ] Redis connecté (vérifier dans les logs PM2)
+- [ ] Test `/api/ping` réussi depuis l'extérieur
 - [ ] SSL activé (Let's Encrypt)
+
+---
+
+## Vérification du load balancing
+
+Pour vérifier que les 4 noeuds reçoivent du trafic :
+
+```bash
+# Sur chaque noeud Node.js, regarder les logs
+pm2 logs --lines 5
+
+# Depuis l'extérieur, faire plusieurs requêtes
+for i in {1..10}; do curl -s https://votre-env/api/ping; echo; done
+```
+
+Les requêtes doivent être réparties entre les 4 noeuds (visible dans les logs).
