@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="100" fill="#111827"/>
+  <circle cx="256" cy="220" r="120" fill="#3b82f6"/>
+  <rect x="180" y="300" width="152" height="80" rx="20" fill="#3b82f6"/>
+  <circle cx="200" cy="400" r="30" fill="#1f2937" stroke="#6b7280" stroke-width="8"/>
+  <circle cx="312" cy="400" r="30" fill="#1f2937" stroke="#6b7280" stroke-width="8"/>
+  <rect x="220" y="160" width="72" height="50" rx="10" fill="#1f2937"/>
+  <text x="256" y="195" text-anchor="middle" fill="white" font-family="Arial" font-size="24" font-weight="bold">BUS</text>
+</svg>

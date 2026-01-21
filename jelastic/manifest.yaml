@@ -1,0 +1,138 @@
+type: install
+name: Bus Display Next.js (Node.js)
+version: 1.0.0
+logo: https://raw.githubusercontent.com/jelastic-jps/nextjs/main/images/next-logo.png
+description: |
+  Application Next.js d'affichage des horaires de bus en temps réel.
+  Déploiement sur Node.js natif avec PM2.
+
+globals:
+  APP_PATH: /var/www/webroot/ROOT
+
+settings:
+  fields:
+    - name: envName
+      caption: Nom de l'environnement
+      type: string
+      default: bus-display
+      required: true
+    
+    - name: gitRepo
+      caption: URL du repository Git
+      type: string
+      default: https://github.com/votre-repo/bus-display-next.git
+      required: true
+      
+    - name: gitBranch
+      caption: Branche Git
+      type: string
+      default: main
+      
+    - name: adminApiKey
+      caption: Clé API Admin
+      type: string
+      inputType: password
+      required: true
+      tooltip: "Clé secrète pour l'admin. Générer avec: openssl rand -hex 32"
+      
+    - name: enableRedis
+      caption: Activer Redis Cache
+      type: toggle
+      default: false
+
+nodes:
+  # Node.js Application Server
+  - nodeType: nodejs
+    nodeGroup: cp
+    displayName: Bus Display App
+    count: 1
+    cloudlets: 16
+    nodeVersion: 25
+    engine: nodejs25
+    
+  # Redis (optionnel)  
+  - nodeType: redis
+    nodeGroup: nosql
+    displayName: Redis Cache
+    count: 1
+    cloudlets: 8
+    skipNodeEmails: true
+    isEnabled: ${settings.enableRedis}
+
+onInstall:
+  - deployFromGit
+  - installDependencies
+  - buildApp
+  - configureEnv
+  - startApp
+  - if (${settings.enableRedis}):
+      - configureRedis
+
+actions:
+  deployFromGit:
+    - cmd[cp]:
+        - cd ${globals.APP_PATH}
+        - rm -rf * .[^.]*
+        - git clone -b ${settings.gitBranch} ${settings.gitRepo} .
+      user: root
+      
+  installDependencies:
+    - cmd[cp]:
+        - cd ${globals.APP_PATH}
+        - npm ci
+      user: root
+      
+  buildApp:
+    - cmd[cp]:
+        - cd ${globals.APP_PATH}
+        - npm run build
+      user: root
+      
+  configureEnv:
+    - cmd[cp]:
+        - |
+          cd ${globals.APP_PATH}
+          cat > .env.local << 'EOF'
+          NODE_ENV=production
+          PORT=3000
+          ADMIN_API_KEY=${settings.adminApiKey}
+          REDIS_ENABLED=${settings.enableRedis}
+          NEXT_TELEMETRY_DISABLED=1
+          EOF
+      user: root
+      
+  startApp:
+    - cmd[cp]:
+        - cd ${globals.APP_PATH}
+        - npm install -g pm2
+        - mkdir -p logs
+        - pm2 start ecosystem.config.js
+        - pm2 save
+        - pm2 startup
+      user: root
+      
+  configureRedis:
+    - cmd[cp]:
+        - |
+          cd ${globals.APP_PATH}
+          echo "REDIS_URL=redis://${nodes.nosql[0].intIP}:6379" >> .env.local
+          echo "REDIS_PREFIX=bus-display:" >> .env.local
+          pm2 restart bus-display
+      user: root
+
+success: |
+  ## 🚌 Bus Display déployé avec succès!
+  
+  **URL de l'application:** ${env.url}
+  
+  ### Vérification
+  - Health check: ${env.url}/api/ping
+  - Affichage: ${env.url}/display?stop=NOM_ARRET
+  - Admin: ${env.url}/admin
+  
+  ### Commandes PM2 utiles (via SSH)
+  ```
+  pm2 list          # Voir les processus
+  pm2 logs          # Voir les logs
+  pm2 restart all   # Redémarrer
+  ```

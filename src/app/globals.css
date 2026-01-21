@@ -1,26 +1,521 @@
-@import "tailwindcss";
+/* ============================================
+   Bus Display - CSS Original Fidèle
+   Basé sur le frontend original (style.css)
+   ============================================ */
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* Variables pour le thème clair */
+:root[data-theme="light"] {
+  --text-color: #000000;
+  --bg-color: #ffffff;
+  --card-bg: #f0f0f0;
+  --card-hover: #e5e5e5;
+  --line-number-bg: #FFD700;
+  --error-color: #ff4444;
+  --header-color: #000000;
+  --scrollbar-bg: #e0e0e0;
+  --scrollbar-thumb: #999999;
+  --scrollbar-thumb-hover: #666666;
+  --footer: #f0f0f0;
+  --border-color: #e0e0e0;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* Variables pour le thème sombre (par défaut) */
+:root,
+:root[data-theme="dark"] {
+  --text-color: #ffffff;
+  --bg-color: #000000;
+  --card-bg: #1a1a1a;
+  --card-hover: #252525;
+  --line-number-bg: #FFD700;
+  --error-color: #ff4444;
+  --header-color: #ffffff;
+  --scrollbar-bg: #1a1a1a;
+  --scrollbar-thumb: #333333;
+  --scrollbar-thumb-hover: #444444;
+  --footer: #1a1a1a;
+  --border-color: #333333;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Reset et base */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg-color);
+  color: var(--text-color);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  transition: opacity 1s ease-in-out;
+}
+
+/* Barre de défilement cachée */
+::-webkit-scrollbar {
+  width: 0;
+  display: none;
+}
+
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+/* ============================================
+   HEADER - Page Display
+   ============================================ */
+.header {
+  padding: 2vh;
+  background-color: var(--bg-color);
+  display: flex;
+  align-items: center;
+  gap: 2vw;
+  height: 15vh;
+  min-height: 80px;
+}
+
+.bus-icon {
+  font-size: 5vh;
+  min-font-size: 32px;
+}
+
+.stop-info {
+  flex-grow: 1;
+}
+
+.stop-info h1 {
+  font-size: 4vh;
+  margin-bottom: 1vh;
+  color: var(--header-color);
+}
+
+.line-indicator {
+  background: #333333;
+  color: #ffffff;
+  padding: 0.5rem 2rem;
+  border-radius: 2rem;
+  font-size: 2rem;
+  font-weight: bold;
+  display: inline-block;
+}
+
+/* ============================================
+   DEPARTURES - Cards de départ
+   ============================================ */
+.departures-container {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 10px 0;
+  height: calc(100vh - 200px);
+  margin-bottom: 140px;
+}
+
+.departure {
+  background: var(--card-bg);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin: 0 20px 1rem;
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  min-height: 120px;
+  display: flex;
+  align-items: center;
+  opacity: 1;
+  transform: translateX(0);
+  animation: fadeSlideIn 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.departure:hover {
+  transform: translateX(4px) scale(1.01);
+  background: var(--card-hover);
+}
+
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+    filter: blur(2px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+.departure-info {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) 20rem;
+  align-items: center;
+  gap: 2rem;
+  width: 100%;
+}
+
+.line-number {
+  background: var(--line-number-bg);
+  color: #000;
+  padding: 0.5rem 1.5rem;
+  border-radius: 8px;
+  font-size: 2.5rem;
+  font-weight: bold;
+  min-width: 5rem;
+  text-align: center;
+}
+
+.scheduled-time {
+  font-size: 2.5rem;
+  font-weight: 500;
+  color: var(--text-color);
+}
+
+.destination {
+  font-size: 2.5rem;
+  font-weight: bold;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-color);
+}
+
+.minutes-left {
+  font-size: 3rem;
+  font-weight: bold;
+  min-width: 20rem;
+  text-align: right;
+  color: var(--text-color);
+  white-space: nowrap;
+  padding-right: 2rem;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+/* ============================================
+   DELAYS & STATES
+   ============================================ */
+.delay {
+  color: var(--error-color);
+  font-weight: 600;
+  margin-left: 1rem;
+  display: inline-block;
+  white-space: nowrap;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.departure.delayed {
+  border-left: 4px solid var(--error-color);
+  position: relative;
+}
+
+.departure.approaching {
+  border-left: 4px solid #4CAF50;
+  position: relative;
+  animation: approachingGlow 3s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.departure.approaching .minutes-left {
+  color: #4CAF50;
+  font-weight: 700;
+}
+
+@keyframes approachingGlow {
+  0% {
+    background: var(--card-bg);
+    box-shadow: 0 0 0 rgba(76, 175, 80, 0);
+  }
+
+  50% {
+    background: rgba(76, 175, 80, 0.1);
+    box-shadow: 0 0 15px rgba(76, 175, 80, 0.2);
+  }
+
+  100% {
+    background: var(--card-bg);
+    box-shadow: 0 0 0 rgba(76, 175, 80, 0);
+  }
+}
+
+/* ============================================
+   FOOTER - Logos et horloge
+   ============================================ */
+.footer {
+  background-color: var(--footer);
+  padding: 10px 20px;
+  height: 80px;
+  border-top: 1px solid var(--border-color);
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  align-items: center;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+
+.partners {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  height: 100%;
+}
+
+.partner-logo,
+.company-logo {
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.partner-logo img {
+  height: 40px;
+  width: auto;
+  object-fit: contain;
+}
+
+.company-logo {
+  justify-content: flex-end;
+  padding-right: 10px;
+}
+
+.company-logo img {
+  height: 60px;
+  width: auto;
+  object-fit: contain;
+}
+
+.current-time {
+  text-align: center;
+  font-size: 4rem;
+  font-weight: bold;
+  color: var(--text-color);
+  line-height: 1;
+}
+
+/* ============================================
+   LOADING & ERRORS
+   ============================================ */
+.loading {
+  background: var(--card-bg);
+  padding: 2rem;
+  text-align: center;
+  border-radius: 8px;
+  margin: 20px;
+}
+
+.loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 5px solid var(--card-hover);
+  border-top-color: var(--line-number-bg);
+  border-radius: 50%;
+  margin: 0 auto 1rem;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.error,
+.no-departures {
+  background: var(--card-bg);
+  border-radius: 8px;
+  padding: 2rem;
+  text-align: center;
+  font-size: 2rem;
+  margin: 20px;
+}
+
+/* ============================================
+   POWER SAVE MODE
+   ============================================ */
+body.power-save-mode {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+@media (max-height: 768px) {
+  .line-number {
+    font-size: 2rem;
+  }
+
+  .scheduled-time,
+  .destination {
+    font-size: 2rem;
+  }
+
+  .minutes-left {
+    font-size: 2.5rem;
+  }
+}
+
+@media (max-height: 600px) {
+  .line-number {
+    font-size: 1.75rem;
+  }
+
+  .scheduled-time,
+  .destination {
+    font-size: 1.75rem;
+  }
+
+  .minutes-left {
+    font-size: 2rem;
+  }
+}
+
+/* ============================================
+   ADMIN PAGE - Mode clair
+   ============================================ */
+.admin-page {
+  background: #f9fafb;
+  min-height: 100vh;
+  overflow: auto !important;
+  height: auto !important;
+}
+
+.admin-page::-webkit-scrollbar {
+  width: 8px;
+  display: block !important;
+}
+
+.admin-page::-webkit-scrollbar-track {
+  background: #e5e7eb;
+}
+
+.admin-page::-webkit-scrollbar-thumb {
+  background: #9ca3af;
+  border-radius: 4px;
+}
+
+.admin-page::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+}
+
+.admin-page * {
+  scrollbar-width: auto;
+}
+
+.admin-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.section-card {
+  background: white;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  padding: 1.5rem;
+}
+
+.sticky-header {
+  position: sticky;
+  top: 0;
+  background: #f9fafb;
+  padding: 1rem 0;
+  z-index: 10;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+/* ============================================
+   UTILITIES
+   ============================================ */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes approachingGlow {
+
+  0%,
+  100% {
+    box-shadow: 0 0 5px rgba(34, 197, 94, 0.3);
+  }
+
+  50% {
+    box-shadow: 0 0 15px rgba(34, 197, 94, 0.6);
+  }
+}
+
+@keyframes majorDelayPulse {
+
+  0%,
+  100% {
+    background-color: rgba(220, 38, 38, 0.1);
+    box-shadow: 0 0 5px rgba(220, 38, 38, 0.2);
+  }
+
+  50% {
+    background-color: rgba(220, 38, 38, 0.2);
+    box-shadow: 0 0 15px rgba(220, 38, 38, 0.4);
+  }
+}
+
+.separator-line {
+  height: 1px;
+  background: var(--border-color);
+}
+
+/* ============================================
+   PLATFORM (QUAI) STYLES
+   ============================================ */
+
+/* Changement de quai */
+.platform-changed {
+  color: #ef4444; /* red-500 */
+  font-weight: 600;
+  animation: warningPulse 2s ease-in-out infinite;
+}
+
+@keyframes warningPulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+/* Badge quai */
+.platform-badge {
+  background: #6b7280; /* gray-500 */
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+/* Changement de quai - version badge */
+.platform-badge.changed {
+  background: #ef4444; /* red-500 */
+  animation: warningPulse 2s ease-in-out infinite;
 }
