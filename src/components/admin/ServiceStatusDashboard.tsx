@@ -1,6 +1,13 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useServiceStatus, formatBytes, formatUptime } from '@/hooks/useServiceStatus';
+
+interface ServerInfo {
+    ip: string;
+    hostname: string;
+    nodeVersion: string;
+}
 
 /**
  * Composant dashboard de monitoring pour l'admin
@@ -8,6 +15,24 @@ import { useServiceStatus, formatBytes, formatUptime } from '@/hooks/useServiceS
  */
 export default function ServiceStatusDashboard() {
     const { health, rateLimit, apiStats, clients, isLoading, error, lastUpdate, refetch } = useServiceStatus();
+    const [serverInfo, setServerInfo] = useState<ServerInfo | null>(null);
+
+    // Récupérer les infos du serveur (IP du noeud)
+    useEffect(() => {
+        const fetchServerInfo = async () => {
+            try {
+                const res = await fetch('/api/server-info');
+                if (res.ok) {
+                    const data = await res.json();
+                    setServerInfo(data);
+                }
+            } catch {
+                // Ignorer les erreurs silencieusement
+            }
+        };
+
+        fetchServerInfo();
+    }, []);
 
     if (isLoading && !health) {
         return (
@@ -29,7 +54,7 @@ export default function ServiceStatusDashboard() {
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {/* Status global */}
+            {/* Status global avec IP du noeud */}
             <div style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -53,6 +78,21 @@ export default function ServiceStatusDashboard() {
                     }}>
                         {isHealthy ? 'Tous les services opérationnels' : 'Services dégradés'}
                     </span>
+                    {serverInfo && (
+                        <span style={{
+                            marginLeft: '0.5rem',
+                            padding: '0.25rem 0.5rem',
+                            background: 'rgba(59, 130, 246, 0.1)',
+                            border: '1px solid #3b82f6',
+                            borderRadius: '0.375rem',
+                            fontSize: '0.75rem',
+                            color: '#1d4ed8',
+                            fontWeight: 500,
+                            fontFamily: 'monospace',
+                        }}>
+                            🖥️ {serverInfo.ip}
+                        </span>
+                    )}
                 </div>
                 <button
                     onClick={refetch}
