@@ -318,8 +318,8 @@ export function ThemedFooter({ currentTime }: ThemedFooterProps) {
                     <Image
                         src="/assets/cff.png"
                         alt="CFF"
-                        width={100}
-                        height={30}
+                        width={300}
+                        height={50}
                         style={{ objectFit: 'contain' }}
                     />
                 )}
@@ -343,9 +343,9 @@ export function ThemedFooter({ currentTime }: ThemedFooterProps) {
                     <Image
                         src="/assets/logomc.png"
                         alt="MediaCom's"
-                        width={60}
-                        height={40}
-                        style={{ objectFit: 'contain' }}
+                        width={150}
+                        height={55}
+                        style={{ objectFit: 'contain', paddingBottom: '10px' }}
                     />
                 )}
             </div>
