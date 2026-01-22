@@ -227,9 +227,10 @@ export function ThemedDepartureItem({ departure }: ThemedDepartureItemProps) {
 
 interface ThemedHeaderProps {
     stationName: string;
+    filteredLines?: string[];
 }
 
-export function ThemedHeader({ stationName }: ThemedHeaderProps) {
+export function ThemedHeader({ stationName, filteredLines = [] }: ThemedHeaderProps) {
     const { theme } = useTheme();
     const { layout } = useLayout();
 
@@ -255,29 +256,35 @@ export function ThemedHeader({ stationName }: ThemedHeaderProps) {
                 <h1
                     style={{
                         fontSize: layout.header.titleSize,
-                        marginBottom: layout.header.showLinesBadge ? '0.5vh' : 0,
+                        marginBottom: filteredLines.length > 0 ? '0.5vh' : 0,
                         color: theme.colors.header,
                     }}
                 >
                     {stationName || 'Chargement...'}
                 </h1>
 
-                {layout.header.showLinesBadge && (
-                    <Link
-                        href="/admin"
-                        style={{
-                            background: theme.colors.border,
-                            color: theme.colors.text,
-                            padding: '0.25rem 1rem',
-                            borderRadius: '1rem',
-                            fontSize: '1rem',
-                            fontWeight: 'bold',
-                            textDecoration: 'none',
-                            display: 'inline-block',
-                        }}
-                    >
-                        Lignes
-                    </Link>
+                {/* Affichage des lignes filtrées avec leurs couleurs */}
+                {filteredLines.length > 0 && (
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5vh' }}>
+                        {filteredLines.map(line => {
+                            const colors = getLineColors(line);
+                            return (
+                                <span
+                                    key={line}
+                                    style={{
+                                        backgroundColor: colors.background,
+                                        color: colors.color,
+                                        padding: '0.25rem 0.75rem',
+                                        borderRadius: '0.5rem',
+                                        fontSize: '1.2rem',
+                                        fontWeight: 'bold',
+                                    }}
+                                >
+                                    {line}
+                                </span>
+                            );
+                        })}
+                    </div>
                 )}
             </div>
         </header>
@@ -290,9 +297,11 @@ export function ThemedHeader({ stationName }: ThemedHeaderProps) {
 
 interface ThemedFooterProps {
     currentTime: string;
+    showCompanyLogo?: boolean;
+    showPartnerLogo?: boolean;
 }
 
-export function ThemedFooter({ currentTime }: ThemedFooterProps) {
+export function ThemedFooter({ currentTime, showCompanyLogo = true, showPartnerLogo = true }: ThemedFooterProps) {
     const { theme } = useTheme();
     const { layout } = useLayout();
 
@@ -300,7 +309,7 @@ export function ThemedFooter({ currentTime }: ThemedFooterProps) {
         <footer
             style={{
                 background: theme.colors.footer,
-                padding: '10px 20px',
+                padding: '0px 20px',
                 height: layout.footer.height,
                 borderTop: `1px solid ${theme.colors.border}`,
                 display: 'grid',
@@ -314,7 +323,7 @@ export function ThemedFooter({ currentTime }: ThemedFooterProps) {
         >
             {/* Logo partenaire (gauche) */}
             <div style={{ display: 'flex', alignItems: 'center' }}>
-                {layout.footer.showPartnerLogo && (
+                {showPartnerLogo && (
                     <Image
                         src="/assets/cff.png"
                         alt="CFF"
@@ -332,6 +341,7 @@ export function ThemedFooter({ currentTime }: ThemedFooterProps) {
                     fontSize: layout.footer.clockSize,
                     fontWeight: 'bold',
                     color: theme.colors.text,
+                    paddingBottom: '10px',
                 }}
             >
                 {currentTime}
@@ -339,7 +349,7 @@ export function ThemedFooter({ currentTime }: ThemedFooterProps) {
 
             {/* Logo entreprise (droite) */}
             <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
-                {layout.footer.showCompanyLogo && (
+                {showCompanyLogo && (
                     <Image
                         src="/assets/logomc.png"
                         alt="MediaCom's"

@@ -43,9 +43,10 @@ export async function GET(request: NextRequest) {
     trackClient(clientId, station);
 
     const cacheKey = `stationboard:${station}`;
+    const forceFresh = searchParams.get('force_fresh') === 'true';
 
-    // Vérifie le cache
-    const cached = await cacheManager.get<StationboardResponse>(cacheKey, true);
+    // Vérifie le cache (sauf si force_fresh)
+    const cached = forceFresh ? null : await cacheManager.get<StationboardResponse>(cacheKey, true);
 
     // Si rate limited, retourne uniquement le cache (même stale)
     if (isRateLimited('stationboard')) {
@@ -238,7 +239,7 @@ function processStationboardData(rawData: {
                     isPlatformChanged,
                     status: '',
                     isPastDeparture: timestamp < now,
-                    isApproaching: timestamp - now < 120 && timestamp > now // Moins de 2 minutes
+                    isApproaching: timestamp - now < 60 && timestamp > now // Moins de 1 minute
                 }
             } as Departure;
         })

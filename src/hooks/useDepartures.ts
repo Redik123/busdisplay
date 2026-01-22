@@ -33,9 +33,11 @@ export function useDepartures(): UseDeparturesReturn {
     // Ref pour éviter les double-fetches
     const fetchingRef = useRef(false);
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
+    const isApproachingRef = useRef(false);
+    const rawDeparturesRef = useRef<Departure[]>([]);
 
     // Fonction de fetch principal
-    const fetchDepartures = useCallback(async () => {
+    const fetchDepartures = useCallback(async (forceFresh = false) => {
         const stationName = config.station.name;
 
         // Ne pas fetcher si pas de station valide
@@ -52,9 +54,8 @@ export function useDepartures(): UseDeparturesReturn {
         setError(null);
 
         try {
-            const response = await fetch(
-                `/api/stationboard?station=${encodeURIComponent(stationName)}`
-            );
+            const url = `/api/stationboard?station=${encodeURIComponent(stationName)}${forceFresh ? '&force_fresh=true' : ''}`;
+            const response = await fetch(url);
 
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
@@ -68,7 +69,9 @@ export function useDepartures(): UseDeparturesReturn {
             const data = await response.json();
 
             // Stocke les données brutes sans filtrage
-            setRawDepartures(data.stationboard || []);
+            const departures = data.stationboard || [];
+            setRawDepartures(departures);
+            rawDeparturesRef.current = departures;
             setLastUpdate(new Date());
             setError(null);
 
@@ -76,14 +79,14 @@ export function useDepartures(): UseDeparturesReturn {
             console.error('[useDepartures] Erreur:', err);
 
             // Garde les anciennes données en cas d'erreur
-            if (rawDepartures.length === 0) {
+            if (rawDeparturesRef.current.length === 0) {
                 setError(err instanceof Error ? err.message : 'Impossible de récupérer les horaires');
             }
         } finally {
             setLoading(false);
             fetchingRef.current = false;
         }
-    }, [config.station.name, rawDepartures.length]);
+    }, [config.station.name]);
 
     // Applique les filtres aux données brutes (mémoïsé avec dépendances directes)
     const departures = React.useMemo(() => {
@@ -144,27 +147,51 @@ export function useDepartures(): UseDeparturesReturn {
         fetchDepartures();
     }, [config.station.name, fetchDepartures]);
 
-    // Refresh automatique
+    // Refresh automatique avec gestion du mode "à l'approche"
+    const approachingInterval = config.refreshIntervalApproaching || 15000;
     useEffect(() => {
-        // Clear l'ancien interval
-        if (intervalRef.current) {
-            clearInterval(intervalRef.current);
-        }
-
         // Ne pas démarrer si pas de station
         if (!config.station.id) return;
 
-        // Démarrer le nouveau interval
-        intervalRef.current = setInterval(() => {
-            fetchDepartures();
-        }, config.refreshInterval);
-
-        return () => {
+        const startInterval = (interval: number, forceFresh: boolean) => {
             if (intervalRef.current) {
                 clearInterval(intervalRef.current);
             }
+            intervalRef.current = setInterval(() => {
+                fetchDepartures(forceFresh);
+            }, interval);
         };
-    }, [config.refreshInterval, config.station.id, fetchDepartures]);
+
+        // Démarre avec l'intervalle normal
+        startInterval(config.refreshInterval, false);
+
+        // Vérifie toutes les 5 secondes si un bus approche (utilise la ref pour ne pas recréer l'effet)
+        const checkInterval = setInterval(() => {
+            const now = Date.now() / 1000;
+            const hasApproaching = rawDeparturesRef.current.some(d => {
+                const diff = d.stop.departureTimestamp - now;
+                return diff > 0 && diff < 60;
+            });
+
+            if (hasApproaching && !isApproachingRef.current) {
+                // Un bus arrive : passe en mode rapide + bypass cache
+                isApproachingRef.current = true;
+                startInterval(approachingInterval, true);
+            } else if (!hasApproaching && isApproachingRef.current) {
+                // Plus de bus en approche : revient en mode normal
+                isApproachingRef.current = false;
+                startInterval(config.refreshInterval, false);
+            }
+        }, 5000);
+
+        return () => {
+            clearInterval(checkInterval);
+            if (intervalRef.current) {
+                clearInterval(intervalRef.current);
+            }
+            isApproachingRef.current = false;
+        };
+    }, [config.refreshInterval, approachingInterval, config.station.id, fetchDepartures]);
 
     return {
         departures,

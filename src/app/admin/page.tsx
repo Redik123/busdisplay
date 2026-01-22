@@ -259,42 +259,90 @@ export default function AdminPage() {
 
                         {/* Intervalle */}
                         <Card title="⏱️ Intervalle de rafraîchissement">
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                                <input
-                                    type="number"
-                                    value={config.refreshInterval / 1000}
-                                    onChange={(e) => updateConfig({
-                                        refreshInterval: Math.max(30, Math.min(300, parseInt(e.target.value) || 60)) * 1000
-                                    })}
-                                    min={30}
-                                    max={300}
-                                    style={{
-                                        width: '80px',
-                                        padding: '0.5rem',
-                                        border: '1px solid #d1d5db',
-                                        borderRadius: '0.375rem',
-                                        textAlign: 'center',
-                                    }}
-                                />
-                                <span style={{ color: '#6b7280' }}>secondes</span>
-
-                                {[30, 60, 180].map(sec => (
-                                    <button
-                                        key={sec}
-                                        onClick={() => updateConfig({ refreshInterval: sec * 1000 })}
+                            <div style={{ marginBottom: '1rem' }}>
+                                <label style={{ display: 'block', fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.5rem' }}>
+                                    Normal
+                                </label>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                    <input
+                                        type="number"
+                                        value={config.refreshInterval / 1000}
+                                        onChange={(e) => updateConfig({
+                                            refreshInterval: Math.max(30, Math.min(300, parseInt(e.target.value) || 60)) * 1000
+                                        })}
+                                        min={30}
+                                        max={300}
                                         style={{
-                                            padding: '0.5rem 0.75rem',
-                                            background: config.refreshInterval === sec * 1000 ? '#3b82f6' : '#e5e7eb',
-                                            color: config.refreshInterval === sec * 1000 ? 'white' : '#374151',
-                                            border: 'none',
+                                            width: '80px',
+                                            padding: '0.5rem',
+                                            border: '1px solid #d1d5db',
                                             borderRadius: '0.375rem',
-                                            cursor: 'pointer',
-                                            fontSize: '0.875rem',
+                                            textAlign: 'center',
                                         }}
-                                    >
-                                        {sec < 60 ? `${sec}s` : `${sec / 60}m`}
-                                    </button>
-                                ))}
+                                    />
+                                    <span style={{ color: '#6b7280' }}>secondes</span>
+
+                                    {[30, 60, 180].map(sec => (
+                                        <button
+                                            key={sec}
+                                            onClick={() => updateConfig({ refreshInterval: sec * 1000 })}
+                                            style={{
+                                                padding: '0.5rem 0.75rem',
+                                                background: config.refreshInterval === sec * 1000 ? '#3b82f6' : '#e5e7eb',
+                                                color: config.refreshInterval === sec * 1000 ? 'white' : '#374151',
+                                                border: 'none',
+                                                borderRadius: '0.375rem',
+                                                cursor: 'pointer',
+                                                fontSize: '0.875rem',
+                                            }}
+                                        >
+                                            {sec < 60 ? `${sec}s` : `${sec / 60}m`}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.5rem' }}>
+                                    En approche (bus &lt; 1 min)
+                                </label>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                    <input
+                                        type="number"
+                                        value={(config.refreshIntervalApproaching || 15000) / 1000}
+                                        onChange={(e) => updateConfig({
+                                            refreshIntervalApproaching: Math.max(5, Math.min(60, parseInt(e.target.value) || 15)) * 1000
+                                        })}
+                                        min={5}
+                                        max={60}
+                                        style={{
+                                            width: '80px',
+                                            padding: '0.5rem',
+                                            border: '1px solid #d1d5db',
+                                            borderRadius: '0.375rem',
+                                            textAlign: 'center',
+                                        }}
+                                    />
+                                    <span style={{ color: '#6b7280' }}>secondes</span>
+
+                                    {[10, 15, 30, 45].map(sec => (
+                                        <button
+                                            key={sec}
+                                            onClick={() => updateConfig({ refreshIntervalApproaching: sec * 1000 })}
+                                            style={{
+                                                padding: '0.5rem 0.75rem',
+                                                background: (config.refreshIntervalApproaching || 15000) === sec * 1000 ? '#3b82f6' : '#e5e7eb',
+                                                color: (config.refreshIntervalApproaching || 15000) === sec * 1000 ? 'white' : '#374151',
+                                                border: 'none',
+                                                borderRadius: '0.375rem',
+                                                cursor: 'pointer',
+                                                fontSize: '0.875rem',
+                                            }}
+                                        >
+                                            {sec}s
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
                         </Card>
                     </div>
@@ -483,13 +531,22 @@ export default function AdminPage() {
                                 <label style={{ display: 'block', fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.25rem' }}>
                                     Logo entreprise
                                 </label>
-                                <select style={{
-                                    width: '100%',
-                                    padding: '0.5rem',
-                                    border: '1px solid #d1d5db',
-                                    borderRadius: '0.375rem',
-                                    boxSizing: 'border-box',
-                                }}>
+                                <select
+                                    value={config.logos?.company || ''}
+                                    onChange={(e) => updateConfig({
+                                        logos: {
+                                            ...config.logos,
+                                            company: e.target.value || null
+                                        }
+                                    })}
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.5rem',
+                                        border: '1px solid #d1d5db',
+                                        borderRadius: '0.375rem',
+                                        boxSizing: 'border-box',
+                                    }}
+                                >
                                     <option value="mc">Logo MediaCom&apos;s</option>
                                     <option value="">Aucun</option>
                                 </select>
@@ -499,13 +556,22 @@ export default function AdminPage() {
                                 <label style={{ display: 'block', fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.25rem' }}>
                                     Partenaire
                                 </label>
-                                <select style={{
-                                    width: '100%',
-                                    padding: '0.5rem',
-                                    border: '1px solid #d1d5db',
-                                    borderRadius: '0.375rem',
-                                    boxSizing: 'border-box',
-                                }}>
+                                <select
+                                    value={config.logos?.partner || ''}
+                                    onChange={(e) => updateConfig({
+                                        logos: {
+                                            ...config.logos,
+                                            partner: e.target.value || null
+                                        }
+                                    })}
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.5rem',
+                                        border: '1px solid #d1d5db',
+                                        borderRadius: '0.375rem',
+                                        boxSizing: 'border-box',
+                                    }}
+                                >
                                     <option value="cff">CFF</option>
                                     <option value="">Aucun</option>
                                 </select>

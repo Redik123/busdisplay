@@ -23,28 +23,29 @@ export function useTimeRemaining(timestamp: number, updateIntervalMs: number = 6
     const calculateTime = useCallback((): TimeRemainingResult => {
         const now = Date.now() / 1000;
         const diff = timestamp - now;
-        const totalMinutes = Math.floor(diff / 60);
 
         // Bus déjà parti
-        if (totalMinutes < 0) {
+        if (diff <= 0) {
             return {
                 timeRemaining: '',
                 isApproaching: false,
                 hasDeparted: true,
-                totalMinutes
+                totalMinutes: Math.floor(diff / 60)
             };
         }
 
-        // À l'approche (0-1 min)
-        if (totalMinutes <= 1) {
+        // À l'approche (< 60 secondes)
+        if (diff < 60) {
             return {
                 timeRemaining: "À l'approche",
                 isApproaching: true,
                 hasDeparted: false,
-                totalMinutes
+                totalMinutes: 0
             };
         }
 
+        // Arrondi vers le haut pour ne pas tromper les passagers
+        const totalMinutes = Math.ceil(diff / 60);
         const hours = Math.floor(totalMinutes / 60);
         const minutes = totalMinutes % 60;
 

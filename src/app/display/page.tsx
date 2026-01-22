@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useDepartures } from '@/hooks/useDepartures';
 import { useConfig, useConfigHydrated } from '@/hooks/useConfig';
 import { usePowerSave } from '@/hooks/usePowerSave';
 import { useLayout } from '@/hooks/useLayout';
+import { useSyncedTime } from '@/hooks/useSyncedTime';
 import {
     ThemedDisplay,
     ThemedHeader,
@@ -27,24 +27,8 @@ export default function DisplayPage() {
     const { isPowerSaveActive } = usePowerSave();
     const { layout } = useLayout();
 
-    // Horloge
-    const [currentTime, setCurrentTime] = useState('--:--:--');
-
-    useEffect(() => {
-        const updateClock = () => {
-            const now = new Date();
-            setCurrentTime(now.toLocaleTimeString('fr-CH', {
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-                hour12: false
-            }));
-        };
-
-        updateClock();
-        const interval = setInterval(updateClock, 1000);
-        return () => clearInterval(interval);
-    }, []);
+    // Horloge synchronisée avec le serveur
+    const currentTime = useSyncedTime();
 
     // Mode veille - écran noir complet
     if (isPowerSaveActive) {
@@ -103,7 +87,7 @@ export default function DisplayPage() {
     return (
         <ThemedDisplay>
             {/* Header */}
-            <ThemedHeader stationName={config.station.name} />
+            <ThemedHeader stationName={config.station.name} filteredLines={config.filteredLines} />
 
             {/* Séparateur */}
             <div style={{ height: '1px', background: 'var(--border-color, #333)' }} />
@@ -144,7 +128,11 @@ export default function DisplayPage() {
             </main>
 
             {/* Footer avec horloge et logos */}
-            <ThemedFooter currentTime={currentTime} />
+            <ThemedFooter
+                currentTime={currentTime}
+                showCompanyLogo={config.logos?.company !== null && config.logos?.company !== ''}
+                showPartnerLogo={config.logos?.partner !== null && config.logos?.partner !== ''}
+            />
         </ThemedDisplay>
     );
 }

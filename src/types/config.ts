@@ -48,6 +48,7 @@ export interface AppConfig {
   filteredDirections: string[];
   filteredCategories: TransportType[];  // Types de transport à afficher
   refreshInterval: number;  // Millisecondes (min: 30000, max: 300000)
+  refreshIntervalApproaching: number;  // Millisecondes en mode "à l'approche" (min: 5000, max: 60000)
   theme: ThemeConfig;
   logos: LogoConfig;
 }
@@ -67,6 +68,7 @@ export const defaultConfig: AppConfig = {
   filteredDirections: [],
   filteredCategories: ['bus'],  // Par défaut: uniquement les bus
   refreshInterval: 120000,  // 2 minutes
+  refreshIntervalApproaching: 15000,  // 15 secondes en mode "à l'approche"
   theme: {
     mode: 'dark',
     schedule: {
@@ -90,6 +92,13 @@ export function validateConfig(config: Partial<AppConfig>): AppConfig {
     validated.refreshInterval = 30000;
   } else if (validated.refreshInterval > 300000) {
     validated.refreshInterval = 300000;
+  }
+
+  // Valider refreshIntervalApproaching (5s - 60s)
+  if (validated.refreshIntervalApproaching < 5000) {
+    validated.refreshIntervalApproaching = 5000;
+  } else if (validated.refreshIntervalApproaching > 60000) {
+    validated.refreshIntervalApproaching = 60000;
   }
 
   return validated;
