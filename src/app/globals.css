@@ -337,7 +337,7 @@ body {
    ============================================ */
 body.power-save-mode {
   opacity: 0;
-  pointer-events: none;
+  /* pointer-events: none; - REMOVED: Blocking touch events on Android */
 }
 
 /* ============================================

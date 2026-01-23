@@ -6,6 +6,7 @@ import { useConfig, useConfigHydrated } from '@/hooks/useConfig';
 import { usePowerSave } from '@/hooks/usePowerSave';
 import { useLayout } from '@/hooks/useLayout';
 import { useSyncedTime } from '@/hooks/useSyncedTime';
+import { useWakeLock } from '@/hooks/useWakeLock';
 import {
     ThemedDisplay,
     ThemedHeader,
@@ -24,15 +25,28 @@ export default function DisplayPage() {
     const { config } = useConfig();
     const isHydrated = useConfigHydrated();
     const { departures, loading, error, usedCache } = useDepartures();
-    const { isPowerSaveActive } = usePowerSave();
+    const { isPowerSaveActive, isInSleepHours } = usePowerSave();
     const { layout } = useLayout();
 
     // Horloge synchronisée avec le serveur
     const currentTime = useSyncedTime();
 
-    // Mode veille - écran noir complet
+    // Garder l'écran allumé quand on est dans les heures de veille mais pas en mode économie
+    useWakeLock(isInSleepHours && !isPowerSaveActive);
+
+    // DEBUG: Afficher l'état du mode veille (seulement au changement d'état)
+    // Supprimé pour réduire le spam dans la console
+
+    // Mode veille - écran noir complet avec handlers tactiles pour Android
     if (isPowerSaveActive) {
-        return <div style={{ height: '100vh', background: '#000' }} />;
+        return (
+            <div
+                style={{ height: '100vh', background: '#000', width: '100%' }}
+                onTouchStart={() => console.log('[Display] Touch on black screen')}
+                onTouchEnd={() => console.log('[Display] Touch end on black screen')}
+                onClick={() => console.log('[Display] Click on black screen')}
+            />
+        );
     }
 
     // Attendre hydratation

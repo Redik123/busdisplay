@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import type { Departure } from '@/types/departure';
 import { useConfig } from './useConfig';
+import { usePowerSave } from './usePowerSave';
 
 interface UseDeparturesReturn {
     departures: Departure[];
@@ -24,6 +25,7 @@ interface UseDeparturesReturn {
  */
 export function useDepartures(): UseDeparturesReturn {
     const { config } = useConfig();
+    const { isPowerSaveActive } = usePowerSave();
     const [rawDepartures, setRawDepartures] = useState<Departure[]>([]); // Données brutes de l'API
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -36,8 +38,17 @@ export function useDepartures(): UseDeparturesReturn {
     const isApproachingRef = useRef(false);
     const rawDeparturesRef = useRef<Departure[]>([]);
 
+    // Vérifier si on doit arrêter les requêtes API en mode veille
+    const shouldStopRequests = config.sleepMode?.stopRequests && isPowerSaveActive;
+
     // Fonction de fetch principal
     const fetchDepartures = useCallback(async (forceFresh = false) => {
+        // Arrêter les requêtes API si le mode veille est actif avec stopRequests
+        if (shouldStopRequests) {
+            console.log('[Departures] Stopping API requests during sleep mode');
+            return;
+        }
+
         const stationName = config.station.name;
 
         // Ne pas fetcher si pas de station valide
@@ -86,7 +97,7 @@ export function useDepartures(): UseDeparturesReturn {
             setLoading(false);
             fetchingRef.current = false;
         }
-    }, [config.station.name]);
+    }, [config.station.name, shouldStopRequests]);
 
     // Applique les filtres aux données brutes (mémoïsé avec dépendances directes)
     const departures = React.useMemo(() => {

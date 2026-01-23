@@ -255,6 +255,29 @@ export default function AdminPage() {
                                     />
                                 </div>
                             </div>
+
+                            <label style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.75rem',
+                                marginTop: '1rem',
+                                cursor: 'pointer',
+                            }}>
+                                <input
+                                    type="checkbox"
+                                    checked={config.sleepMode?.stopRequests || false}
+                                    onChange={(e) => updateConfig({
+                                        sleepMode: {
+                                            ...config.sleepMode,
+                                            stopRequests: e.target.checked
+                                        }
+                                    })}
+                                    style={{ width: '1.25rem', height: '1.25rem', accentColor: '#3b82f6' }}
+                                />
+                                <span style={{ color: '#374151', fontSize: '0.875rem' }}>
+                                    Arrêter les requêtes API pendant le mode veille
+                                </span>
+                            </label>
                         </Card>
 
                         {/* Intervalle */}
