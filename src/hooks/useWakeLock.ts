@@ -2,16 +2,15 @@
 
 import { useEffect, useState, useRef } from 'react';
 
+// Types pour Wake Lock API
 interface WakeLockSentinel extends EventTarget {
+    released: boolean;
+    type: 'screen';
     release(): Promise<void>;
 }
 
-declare global {
-    interface Navigator {
-        wakeLock?: {
-            request(type: 'screen'): Promise<WakeLockSentinel>;
-        };
-    }
+interface WakeLock {
+    request(type: 'screen'): Promise<WakeLockSentinel>;
 }
 
 /**
@@ -34,8 +33,9 @@ export function useWakeLock(shouldLock: boolean) {
 
         const requestWakeLock = async () => {
             try {
-                if (navigator.wakeLock) {
-                    wakeLockRef.current = await navigator.wakeLock.request('screen');
+                const nav = navigator as Navigator & { wakeLock?: WakeLock };
+                if (nav.wakeLock) {
+                    wakeLockRef.current = await nav.wakeLock.request('screen');
                     setIsActive(true);
                     console.log('[WakeLock] Screen wake lock activated');
 
